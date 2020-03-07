@@ -2,14 +2,13 @@
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#include <eDataStructures.h>
 #include <wpa2_enterprise.h>
-#include "serv_credentials.h"
+#include "serv_credentials.h" //defines HOMESSID, HOMEPASS, ENTSSID, ENTUSER, ENTPASS
+#include "data_structures.h"
 
 #define MAX_NETWORKS 50
 #define MAX_SAMPLES 10
 
-using namespace Eloquent::DataStructures;
 String message[MAX_SAMPLES];
 int messageIndex = 0;
 
@@ -18,46 +17,52 @@ Array<String, MAX_NETWORKS> knownNetworks("");
 
 ESP8266WebServer server(80);
 
-char* ssid;
-char* username;
-char* password;
+char* ssid = NULL;
+char* username = NULL;
+char* password = NULL;
 
 void setup()
 {
     Serial.begin(115200);
     pinMode(LED_BUILTIN, OUTPUT);
 
-    int networkCount = WiFi.scanNetworks();
-    for( int i = 0; i < networkCount; i++ )
+    while( ssid == NULL )
     {
-        if( WiFi.SSID(i).equals("Kottler") )
+        int networkCount = WiFi.scanNetworks();
+        for( int i = 0; i < networkCount; i++ )
         {
-            ssid = HOMESSID;
-            password = HOMEPASS;
-            break;
-        }
-        if( WiFi.SSID(i).equals("student-curtin") );
-        {
-            ssid = CURTINSSID;
-            username = CURTINUSER;
-            password = CURTINPASS;
+            if( WiFi.SSID(i).equals(HOMESSID) )
+            {
+                ssid = HOMESSID;
+                password = HOMEPASS;
+                break;
+            }
+            if( WiFi.SSID(i).equals(ENTSSID) )
+            {
+                ssid = ENTSSID;
+                username = ENTUSER;
+                password = ENTPASS;
           
-            struct station_config wifi_config;
-            memset(&wifi_config, 0, sizeof(wifi_config));
+                //WPA2-enterprise PEAP setup
+                struct station_config wifi_config;
+                memset(&wifi_config, 0, sizeof(wifi_config));
 
-            strcpy((char*)wifi_config.ssid, ssid);
+                strcpy((char*)wifi_config.ssid, ssid);
 
-            wifi_set_opmode(STATION_MODE);
-            wifi_station_set_config(&wifi_config);
-            wifi_station_clear_cert_key();
-            wifi_station_clear_enterprise_ca_cert();
-            wifi_station_set_wpa2_enterprise_auth(1);
-            wifi_station_set_enterprise_identity((uint8*)username, strlen(username));
-            wifi_station_set_enterprise_username((uint8*)username, strlen(username));
-            wifi_station_set_enterprise_password((uint8*)password, strlen(password));
-            wifi_station_connect();
-            break;
+                wifi_set_opmode(STATION_MODE);
+                wifi_station_set_config(&wifi_config);
+                wifi_station_clear_cert_key();
+                wifi_station_clear_enterprise_ca_cert();
+                wifi_station_set_wpa2_enterprise_auth(1);
+                wifi_station_set_enterprise_identity((uint8*)username, strlen(username));
+                wifi_station_set_enterprise_username((uint8*)username, strlen(username));
+                wifi_station_set_enterprise_password((uint8*)password, strlen(password));
+                wifi_station_connect();
+                break;
+            }
         }
+
+        delay(5000); //Neither home or enterprise network found
     }
     
     WiFi.mode(WIFI_STA);
@@ -139,7 +144,6 @@ void scanRSSIs()
 void printRSSIs()
 {
     digitalWrite(LED_BUILTIN, LOW);
-    //const uint16_t RSSIcount = sizeof(RSSIarr) / sizeof(double);
     int knownNetCount = knownNetworks.length();
     String temp;
 
