@@ -5,9 +5,10 @@
 #include <wpa2_enterprise.h>
 #include "serv_credentials.h" //defines HOMESSID, HOMEPASS, ENTSSID, ENTUSER, ENTPASS
 #include "data_structures.h"
+#include "model.h"
 
 #define MAX_NETWORKS 50
-#define MAX_SAMPLES 10
+#define MAX_SAMPLES 25
 
 String message[MAX_SAMPLES];
 int messageIndex = 0;
@@ -90,7 +91,8 @@ void setup()
 
     server.on("/", handleIndex);
     server.on("/scanNetworks", scanNetworks);
-    server.on("/measure", scanLoop);
+    server.on("/takeMeasurement", takeMeasurement);
+    server.on("/predictLocation", predictLocation);
 
     server.begin();
     Serial.println("HTTP server started");
@@ -109,13 +111,14 @@ void handleIndex()
         <title>ESP8266 WiFiLocation test</title>\n\
     <\head>\n    <body>\n\
         <a href=\"/scanNetworks\" style=\"font-size:100px\">scan networks</a><br>\n\
-        <a href=\"/measure\" style=\"font-size:100px\">take measurement</a>\n\
+        <a href=\"/takeMeasurement\" style=\"font-size:100px\">take measurement</a><br>\n\
+        <a href=\"/predictLocation\" style=\"font-size:100px\">predict location</a>\n\
     </body>\n</html>";
     server.send(200, "text/html", temp);
     digitalWrite(LED_BUILTIN, HIGH);
 }
 
-void scanLoop()
+void takeMeasurement()
 {
     scanRSSIs();
     printRSSIs();
@@ -164,7 +167,7 @@ void printRSSIs()
     temp = "<html>\n    <head>\n";
     if( messageIndex < MAX_SAMPLES )
     {
-        temp += "        <meta http-equiv='refresh' content='2'/>\n";
+        temp += "        <meta http-equiv='refresh' content='0.5'/>\n";
     }
     temp += "        <title>ESP8266 WiFiLocation test</title>\n\
     </head>\n    <body>\n\
@@ -174,11 +177,12 @@ void printRSSIs()
         temp += knownNetworks[i];
         temp += i == knownNetCount - 1 ? "</p>\n" : ",";
     }
+    temp += "        <p>";
     for( int i = 0; i < messageIndex; i++ )
     {
-        temp += "        <p>"+message[i]+"<br></p>\n";
+        temp += message[i]+"<br>\n";
     }
-    temp += "    </body>\n</html>";
+    temp += "</p>    </body>\n</html>";
 
     server.send(400, "text/html", temp);
     digitalWrite(LED_BUILTIN, HIGH);
@@ -216,7 +220,7 @@ void scanNetworks()
             WiFi.SSID(i).equals("staff-curtin") ||
             WiFi.SSID(i).equals("CurtinGuest") ||
             WiFi.SSID(i).equals("Kottler") ||
-            WiFi.SSID(i).equals("RPi") ||
+            WiFi.SSID(i).equals("Gkiphone") ||
             WiFi.SSID(i).equals("WAVLINK-N") )
         {
             uint16_t networkIndex = knownNetworks.indexOf(bssid);
@@ -231,19 +235,55 @@ void scanNetworks()
     temp = "<html>\n    <head>\n\
         <title>ESP8266 WiFiLocation test</title>\n\
     </head>\n    <body>\n\
-        <a href=\"/\" style=\"font-size:100px\">\<-back</a><br>\n";
+        <a href=\"/\" style=\"font-size:100px\">\<-back</a><br>\n        <p>";
     for( int i = 0; i < networkCount; i++ )
     {
-        temp += "        <p>"+message[i]+"<br></p>\n";
+        temp += message[i]+"<br>\n";
         message[i] = "";
     }
-    temp += "        <br>\n        <p>";
+    temp += "</p>\n        <p>";
     for( int i = 0; i < knownNetCount; i++ )
     {
         temp += knownNetworks[i];
         temp += i == knownNetCount - 1 ? "</p>\n" : ",";
     }
     temp += "    </body>\n</html>";
+
+    server.send(400, "text/html", temp);
+    digitalWrite(LED_BUILTIN, HIGH);
+}
+
+//TODO:Automate this class, generating based on the new model each time
+const char* classIdxToName(uint8_t classIdx)
+{
+    switch (classIdx)
+    {
+        case 0:
+            return "bedroom";
+        case 1:
+            return "office";
+        case 2:
+            return "corridor";
+        case 3:
+            return "kitchen";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+void predictLocation()
+{
+    digitalWrite(LED_BUILTIN, LOW);
+    String temp;
+
+    scanRSSIs();
+
+    temp = "<html>\n    <head>\n\
+        <title>ESP8266 WiFiLocation test</title>\n\
+    </head>\n    <body>\n\
+        <a href=\"/\" style=\"font-size:100px\">\<-back</a><br>\n        <p>\n";
+    temp += classIdxToName(predict(RSSIarr));
+    temp += "</p>\n    </body>\n</html>";
 
     server.send(400, "text/html", temp);
     digitalWrite(LED_BUILTIN, HIGH);
