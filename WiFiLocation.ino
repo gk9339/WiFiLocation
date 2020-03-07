@@ -149,11 +149,14 @@ void printRSSIs()
 
     if( messageIndex < MAX_SAMPLES )
     {
-        message[messageIndex] += '\n';
+        message[messageIndex] = "";
         for( int i = 0; i < knownNetCount; i++ )
         {
             message[messageIndex] += RSSIarr[i];
-            message[messageIndex] += i == knownNetCount - 1 ? '\n' : ',';
+            if( i != knownNetCount - 1 )
+            {
+                message[messageIndex] += ',';
+            }
         }
         messageIndex++;
     }
