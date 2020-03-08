@@ -8,7 +8,7 @@
 #include "model.h"
 
 #define MAX_NETWORKS 50
-#define MAX_SAMPLES 25
+#define MAX_SAMPLES 50
 
 String message[MAX_SAMPLES];
 int messageIndex = 0;
@@ -167,7 +167,7 @@ void printRSSIs()
     temp = "<html>\n    <head>\n";
     if( messageIndex < MAX_SAMPLES )
     {
-        temp += "        <meta http-equiv='refresh' content='0.5'/>\n";
+        temp += "        <meta http-equiv='refresh' content='0'/>\n";
     }
     temp += "        <title>ESP8266 WiFiLocation test</title>\n\
     </head>\n    <body>\n\
@@ -184,8 +184,21 @@ void printRSSIs()
     }
     temp += "</p>    </body>\n</html>";
 
-    server.send(400, "text/html", temp);
-    digitalWrite(LED_BUILTIN, HIGH);
+    if( messageIndex == MAX_SAMPLES )
+    {
+        digitalWrite(LED_BUILTIN, HIGH);
+        for( int i = 0; i < 5; i++ )
+        {
+            delay(100);
+            digitalWrite(LED_BUILTIN, LOW);
+            delay(100);
+            digitalWrite(LED_BUILTIN, HIGH);
+        }
+        resetRSSIs();
+        messageIndex = 0;
+    }
+
+    server.send(2000, "text/html", temp);
 }
 
 void resetRSSIs()
@@ -221,6 +234,7 @@ void scanNetworks()
             WiFi.SSID(i).equals("CurtinGuest") ||
             WiFi.SSID(i).equals("Kottler") ||
             WiFi.SSID(i).equals("Gkiphone") ||
+            WiFi.SSID(i).equals("GkiPhone6") ||
             WiFi.SSID(i).equals("WAVLINK-N") )
         {
             uint16_t networkIndex = knownNetworks.indexOf(bssid);

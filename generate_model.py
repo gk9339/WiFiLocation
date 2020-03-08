@@ -34,7 +34,6 @@ def plot_boundaries(classifier, X, y, classmap=None):
     plt.show()
 
 features, classmap = load_features('dataset/')
-print(classmap)
 X, y = features[:, :-1], features[:, -1]
 classifier = SVC(kernel='poly', gamma=(1/(len(X[0])*X.var()))).fit(X, y)
 #sklearn_porter includes deprecated code and generates FutureWarnings
