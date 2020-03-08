@@ -253,24 +253,6 @@ void scanNetworks()
     digitalWrite(LED_BUILTIN, HIGH);
 }
 
-//TODO:Automate this class, generating based on the new model each time
-const char* classIdxToName(uint8_t classIdx)
-{
-    switch (classIdx)
-    {
-        case 0:
-            return "bedroom";
-        case 1:
-            return "office";
-        case 2:
-            return "corridor";
-        case 3:
-            return "kitchen";
-        default:
-            return "UNKNOWN";
-    }
-}
-
 void predictLocation()
 {
     digitalWrite(LED_BUILTIN, LOW);
@@ -281,7 +263,7 @@ void predictLocation()
     temp = "<html>\n    <head>\n\
         <title>ESP8266 WiFiLocation test</title>\n\
     </head>\n    <body>\n\
-        <a href=\"/\" style=\"font-size:100px\">\<-back</a><br>\n        <p>\n";
+        <a href=\"/\" style=\"font-size:100px\">\<-back</a><br>\n        <p>";
     temp += classIdxToName(predict(RSSIarr));
     temp += "</p>\n    </body>\n</html>";
 
