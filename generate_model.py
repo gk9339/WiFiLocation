@@ -1,17 +1,16 @@
 #!/bin/python
 
-import sys, getopt, warnings
+import sys, getopt, re
 import numpy as np
 import matplotlib.pyplot as plt
 from glob import glob
 from os.path import basename
 from sklearn.svm import SVC
-#sklearn_porter includes deprecated code and generates FutureWarnings
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore")
-    from sklearn_porter import Porter
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
 from sklearn.decomposition import PCA
 from mlxtend.plotting import plot_decision_regions
+from micromlgen import port
 
 def load_features(folder):
     dataset = None
@@ -30,34 +29,39 @@ def plot_boundaries(classifier, X, y, classmap=None):
     if classmap is not None:
         labels = classmap.values()
     X = PCA(n_components=2).fit_transform(X)
-    plot_decision_regions(X, y.astype(np.uint8), clf=classifier.fit(X, y), legend=1)
+    ax = plot_decision_regions(X, y.astype(np.uint8), clf=classifier.fit(X, y), legend=0)
+    handles, oldlabels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels, framealpha=0.3, scatterpoints=1)
     plt.show()
 
 features, classmap = load_features('dataset/')
-X, y = features[:, :-1], features[:, -1]
-classifier = SVC(kernel='poly', gamma=(1/(len(X[0])*X.var()))).fit(X, y)
-#sklearn_porter includes deprecated code and generates FutureWarnings
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore")
-    porter = Porter(classifier, language='c')
+if (len(sys.argv) > 1 and sys.argv[1] == '-t') or (len(sys.argv) > 2 and sys.argv[2] == '-t'):
+    X, X_test, y, y_test = train_test_split(features[:, :-1], features[:, -1], test_size = 0.3)
+else:
+    X, y = features[:, :-1], features[:, -1]
 
-code = porter.export()[:-259] #strips main() from generated C code
-code = ''.join([code,\
-                '\nconst char* classIdxToName(uint8_t classIdx)\n',\
-                '{\n',\
-                '     switch (classIdx)\n',
-                '    {\n'])
-for x in range(len(classmap)):
-    code +=     '        case ' + str(x) + ':\n' +\
-                '            return \"' + classmap[x] + '\";\n'
-code = ''.join([code,\
-                '        default:\n',\
-                '            return "UNKNOWN";\n',\
-                '    }\n}'])
+#classifier = SVC(kernel='linear', gamma=1.0).fit(X, y)
+#classifier = SVC(kernel='rbf', gamma=(1/(len(X[0])*X.var()))).fit(X, y)
+#classifier = SVC(kernel='rbf', gamma=(0.001)).fit(X, y)
+classifier = SVC(kernel='rbf', gamma=(0.001), C=10).fit(X, y)
+#classifier = SVC(kernel='poly', gamma=(1/(len(X[0])*X.var()))).fit(X, y)
+
+code = port(classifier, classmap=classmap)
+code_list = code.splitlines(True)
+code_list.insert(1,'#include <stdarg.h>\n#include <stdint.h>\n')
+kernel_count = re.split('\[|\]',code_list[19].split()[1])[1]
+decision_count = re.split('\[|\]',code_list[20].split()[1])[1]
+code_list[19] = '    double* kernels = (double*)calloc(' + kernel_count + ', sizeof(double));\n'
+code_list[20] = '    double* decisions = (double*)calloc(' + decision_count + ', sizeof(double));\n'
+code = ''.join(code_list)
 
 f = open("model.h", "w")
 f.write(code)
 f.close()
 
-if len(sys.argv) > 1 and sys.argv[1] == '-p':
+if (len(sys.argv) > 1 and sys.argv[1] == '-t') or (len(sys.argv) > 2 and sys.argv[2] == '-t'):
+    y_pred = classifier.predict(X_test)
+    print("Accuracy:", metrics.accuracy_score(y_test, y_pred))
+
+if (len(sys.argv) > 1 and sys.argv[1] == '-p') or (len(sys.argv) > 2 and sys.argv[2] == '-p'):
     plot_boundaries(classifier, X, y, classmap)
