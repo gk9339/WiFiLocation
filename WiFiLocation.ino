@@ -130,6 +130,7 @@ void scan_RSSIs()
 {
     digitalWrite(LED_BUILTIN, LOW);
     int network_count = WiFi.scanNetworks();
+    int rssi;
 
     reset_RSSIs();
 
@@ -140,6 +141,11 @@ void scan_RSSIs()
 
         if( network_index != 65535 )
         {
+            rssi = WiFi.RSSI(i);
+            if( rssi == 0 )
+            {
+                rssi = -100;
+            }
             RSSI_arr[network_index] = WiFi.RSSI(i);
         }
     }

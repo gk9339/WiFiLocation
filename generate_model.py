@@ -11,6 +11,7 @@ from sklearn import metrics
 from sklearn.decomposition import PCA
 from mlxtend.plotting import plot_decision_regions
 from micromlgen import port
+from sklearn.impute import SimpleImputer
 
 def load_features(folder):
     dataset = None
@@ -19,6 +20,9 @@ def load_features(folder):
         class_name = basename(filename)[:-4]
         classmap[class_idx] = class_name
         samples = np.loadtxt(filename, dtype=float, delimiter=',')
+        imp = SimpleImputer(missing_values=-100.00, strategy='mean')
+        imp.fit(samples)
+        samples = imp.transform(samples)
         lables = np.ones((len(samples), 1)) * class_idx
         samples = np.hstack((samples, lables))
         dataset = samples if dataset is None else np.vstack((dataset, samples))
@@ -39,6 +43,7 @@ if (len(sys.argv) > 1 and sys.argv[1] == '-t') or (len(sys.argv) > 2 and sys.arg
     X, X_test, y, y_test = train_test_split(features[:, :-1], features[:, -1], test_size = 0.3)
 else:
     X, y = features[:, :-1], features[:, -1]
+
 
 #classifier = SVC(kernel='linear', gamma=1.0).fit(X, y)
 #classifier = SVC(kernel='rbf', gamma=(1/(len(X[0])*X.var()))).fit(X, y)
