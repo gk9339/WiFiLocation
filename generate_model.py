@@ -44,7 +44,6 @@ if (len(sys.argv) > 1 and sys.argv[1] == '-t') or (len(sys.argv) > 2 and sys.arg
 else:
     X, y = features[:, :-1], features[:, -1]
 
-
 #classifier = SVC(kernel='linear', gamma=1.0).fit(X, y)
 #classifier = SVC(kernel='rbf', gamma=(1/(len(X[0])*X.var()))).fit(X, y)
 #classifier = SVC(kernel='rbf', gamma=(0.001)).fit(X, y)
