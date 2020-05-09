@@ -12,6 +12,7 @@
 String message[MAX_SAMPLES];
 int message_index = 0;
 double RSSI_arr[MAX_NETWORKS];
+int reset = 0; // if 1, reset message in scan_RSSIs
 
 MPU6050 mpu; // IMU
 #define INTERRUPT_PIN D0  
@@ -167,6 +168,7 @@ void setup()
     server.on("/", handle_index);
     server.on("/scan_networks", scan_networks);
     server.on("/take_measurement", take_measurement);
+    server.on("/view_measurement", view_measurement);
     server.on("/predict_location", predict_location);
     server.on("/read_IMU", read_IMU);
 
@@ -190,6 +192,7 @@ void handle_index()
     <\head>\n    <body>\n\
         <a href=\"/scan_networks\" style=\"font-size:100px\">scan networks</a><br>\n\
         <a href=\"/take_measurement\" style=\"font-size:100px\">take measurement</a><br>\n\
+        <a href=\"/view_measurement\" style=\"font-size:100px\">view measurement</a><br>\n\
         <a href=\"/predict_location\" style=\"font-size:100px\">predict location</a><br>\n\
         <a href=\"/read_IMU\" style=\"font-size:100px\">read IMU</a>\n\
     </body>\n</html>";
@@ -203,6 +206,11 @@ void take_measurement()
     print_RSSIs();
 }
 
+void view_measurement()
+{
+    print_RSSIs();
+}
+
 void scan_RSSIs()
 {
     digitalWrite(LED_BUILTIN, LOW);
@@ -210,6 +218,11 @@ void scan_RSSIs()
     int rssi;
 
     reset_RSSIs();
+    if( reset )
+    {
+        message_index = 0;
+        reset = 0;
+    }
 
     for( int i = 0; i < network_count; i++ )
     {
@@ -279,6 +292,8 @@ void print_RSSIs()
     }
     temp += "</p>    </body>\n</html>";
 
+    server.send(2000, "text/html", temp);
+
     if( message_index == MAX_SAMPLES )
     {
         digitalWrite(LED_BUILTIN, HIGH);
@@ -289,11 +304,8 @@ void print_RSSIs()
             delay(50);
             digitalWrite(LED_BUILTIN, HIGH);
         }
-        reset_RSSIs();
-        message_index = 0;
+        reset = 1;
     }
-
-    server.send(2000, "text/html", temp);
 }
 
 void reset_RSSIs()
